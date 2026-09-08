@@ -1,0 +1,40 @@
+/* Webapp-specific styles (global theme lives in index.css). */
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+.font-tech {
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* 控制面板滑杆: 深色已填充段 + 白色余段 + 深色圆头 */
+.jelly-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  border-radius: 999px;
+  border: 1px solid #d8d6d2;
+  background: linear-gradient(to right, #2b2b2b var(--fill, 50%), #fbfbfa var(--fill, 50%));
+  outline: none;
+  cursor: pointer;
+}
+.jelly-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #2b2b2b;
+  cursor: grab;
+}
+.jelly-range::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: none;
+  border-radius: 50%;
+  background: #2b2b2b;
+}
