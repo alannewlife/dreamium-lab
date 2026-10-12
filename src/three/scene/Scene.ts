@@ -112,6 +112,9 @@ class JellyScene implements SceneModule {
     scene.fog = new THREE.Fog(BG, 13, 32)
     scene.environment = neutralEnvironment(renderer)
 
+    // 手机竖屏首帧即按当前窗口取景 (Stage 的 resize 监听只在窗口变化后触发, 首挂载不调用)
+    this.resize(ctx.sizes.width, ctx.sizes.height)
+
     scene.add(new THREE.HemisphereLight(0xffffff, 0xb8b6b2, 0.85))
     const dir = new THREE.DirectionalLight(0xffffff, 1.1)
     dir.position.set(4, 8, 5)
@@ -501,6 +504,23 @@ class JellyScene implements SceneModule {
       const ke = settings.paused ? 0 : Math.min(45, Math.max(0.1, Math.pow(this.body.speed, 2.4)))
       hudStore.set({ volume: Math.round(volume * 10) / 10, ke: Math.round(ke * 10) / 10, shape: settings.shape })
     }
+  }
+
+  // 竖屏取景适配 (用户要求手机适配): 相机沿基准视线后移 + 轻抬 fov + 视线下移让果冻上浮让出面板空间,
+  // 雾距按同比例外扩保持空气感; aspect>=1 的桌面横屏 t 恒为 0, 所有参数回到 init 基准值, 桌面观感零变化
+  resize(width: number, height: number) {
+    const cam = this.ctx.camera
+    const aspect = width / Math.max(1, height)
+    const t = aspect >= 1 ? 0 : Math.min(1, (1 - aspect) / 0.55)
+    const k = 1 + 0.8 * t
+    const targetY = 1.15 - 0.45 * t
+    cam.fov = 35 + 7 * t
+    cam.position.set(0, targetY + 2.25 * k, 7.3 * k)
+    cam.lookAt(0, targetY, 0)
+    const fog = this.ctx.scene.fog as THREE.Fog
+    fog.near = 13 * k
+    fog.far = 32 * k
+    cam.updateProjectionMatrix()
   }
 
   dispose() {

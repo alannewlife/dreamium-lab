@@ -37,6 +37,8 @@ export class SoftBody {
   private readonly dirs: Float32Array
   private volume = 0
   private meanSpeed = 0
+  private readonly covariance = new Float64Array(9)
+  private readonly rotation = new Float64Array(9)
   private calmT = 0 // 持续低于 1.0 速度的累计时间 (星星站立微颤的延迟强沉降用)
   private noise: (x: number, y: number, z: number) => number
 
@@ -65,6 +67,7 @@ export class SoftBody {
   // 切换静止形状: 直接重置为新形状静止态 (用户要求, 无过渡); 切换即释放抓取
   setShape(shape: ShapeId, reset = false) {
     this.shape = shape
+    this.calmT = 0
     this.grabbed = -1
     this.makeRest(shape)
     if (reset) {
@@ -206,6 +209,7 @@ export class SoftBody {
   }
 
   beginGrab(i: number, target: THREE.Vector3) {
+    this.calmT = 0
     this.grabbed = i
     this.grabTarget.copy(target)
   }
@@ -213,10 +217,12 @@ export class SoftBody {
     this.grabTarget.copy(target)
   }
   endGrab() {
+    this.calmT = 0
     this.grabbed = -1
   }
 
   reset() {
+    this.calmT = 0
     this.pos.set(this.rest)
     this.prev.set(this.rest)
     this.grabbed = -1
@@ -296,7 +302,8 @@ export class SoftBody {
         this.com.x += p[k]; this.com.y += p[k + 1]; this.com.z += p[k + 2]
       }
       this.com.multiplyScalar(1 / n)
-      const m = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+      const m = this.covariance
+      m.fill(0)
       for (let i = 0; i < n; i++) {
         const k = i * 3
         const qx = rest[k] - this.restC.x
@@ -321,10 +328,11 @@ export class SoftBody {
         const r1x = 1 - (yy + zz), r1y = xy + wz, r1z = xz - wy
         const r2x = xy - wz, r2y = 1 - (xx + zz), r2z = yz + wx
         const r3x = xz + wy, r3y = yz - wx, r3z = 1 - (xx + yy)
-        // omega = r1×m1 + r2×m2 + r3×m3 (m_i 为 M 的列)
-        const m1x = m[0], m1y = m[3], m1z = m[6]
-        const m2x = m[1], m2y = m[4], m2z = m[7]
-        const m3x = m[2], m3y = m[5], m3z = m[8]
+        // M 存的是 rest⊗world，行才是体轴对应的世界向量。取列会把 q 拟合成逆旋转，
+        // 与回正/抓取姿态打架，用户拖动时就会出现反向拧动。
+        const m1x = m[0], m1y = m[1], m1z = m[2]
+        const m2x = m[3], m2y = m[4], m2z = m[5]
+        const m3x = m[6], m3y = m[7], m3z = m[8]
         const ox = r1y * m1z - r1z * m1y + r2y * m2z - r2z * m2y + r3y * m3z - r3z * m3y
         const oy = r1z * m1x - r1x * m1z + r2z * m2x - r2x * m2z + r3z * m3x - r3x * m3z
         const oz = r1x * m1y - r1y * m1x + r2x * m2y - r2y * m2x + r3x * m3y - r3y * m3x
@@ -341,11 +349,11 @@ export class SoftBody {
       const xx = qq.x * x2, xy = qq.x * y2, xz = qq.x * z2
       const yy = qq.y * y2, yz = qq.y * z2, zz = qq.z * z2
       const wx = qq.w * x2, wy = qq.w * y2, wz = qq.w * z2
-      const R = [
-        1 - (yy + zz), xy + wz, xz - wy,
-        xy - wz, 1 - (xx + zz), yz + wx,
-        xz + wy, yz - wx, 1 - (xx + yy),
-      ]
+      // 按行乘体坐标，与 q·v 的方向保持一致；复用缓冲避免子步分配。
+      const R = this.rotation
+      R[0] = 1 - (yy + zz); R[1] = xy - wz; R[2] = xz + wy
+      R[3] = xy + wz; R[4] = 1 - (xx + zz); R[5] = yz - wx
+      R[6] = xz - wy; R[7] = yz + wx; R[8] = 1 - (xx + yy)
       for (let i = 0; i < n; i++) {
         const k = i * 3
         const qx = rest[k] - this.restC.x
@@ -442,22 +450,21 @@ export class SoftBody {
     }
 
     // 平均速率 (限速后计算, KE 读数反映真实速度)
-    let sum = 0
+    let sum = 0, minY = Infinity
     for (let i = 0; i < n; i++) {
       const k = i * 3
       const vx = p[k] - pr[k], vy = p[k + 1] - pr[k + 1], vz = p[k + 2] - pr[k + 2]
       sum += vx * vx + vy * vy + vz * vz
+      minY = Math.min(minY, p[k + 1])
     }
     this.meanSpeed = Math.sqrt(sum / n) / h
 
-    // 低速沉降: 静置时强阻尼, 保持端庄。阈值放宽到 1.0 — 贴地支撑(星星两尖点/软模式
-    // 下的接触压缩)存在 ~0.3-0.9 速度单位的持续微振荡, 旧阈值 0.28 管不住即肉眼细颤 —
-    // 但必须等"持续安静"才启用: 抛掷落地/松手回弹的余韵晃动速度也在该区间, 立即强阻尼
-    // 会把弹跳感掐死。持续低于 1.0 达 1.2s (瞬态晃动已自然演完)后才升阈值, 全形态统一。
-    if (this.meanSpeed >= 1.0) this.calmT = 0
+    // 用户报告回弹被掐死：空中下落的起步与弹跳顶点也会低速，不能当作静止。
+    // 只有触地且持续安静才沉降；抓取/离地/高速运动都重新计时，保留落地形变的余韵。
+    const grounded = minY < GROUND_Y + 0.015
+    if (this.grabbed >= 0 || !grounded || this.meanSpeed >= 1.0) this.calmT = 0
     else this.calmT += dt
-    const settleV = this.calmT > 1.2 ? 1.0 : 0.28
-    if (this.meanSpeed < settleV && this.grabbed < 0) {
+    if (grounded && this.calmT > 1.2 && this.grabbed < 0) {
       for (let i = 0; i < n; i++) {
         const k = i * 3
         pr[k] += (p[k] - pr[k]) * 0.82
@@ -576,33 +583,44 @@ export class SoftBody {
     }
   }
 
-  // 苹果/方块自立扭矩: 倾倒超过 ~20° 时轻柔转回正立姿态 (死区防静置与地面打架)。
-  // 回正旋转前记录最低点、旋转后按落差整体上抬 (p/pr 同步, 速度中性): 绕质心旋转会把
-  // 支撑点压入地面被碰撞钳制抵消 — 立在棱/角上时表现为扭矩与地面原地拉锯的持续抖动
-  // (用户报告方块自抖), 上抬补偿保证回正真正生效, 干脆倒回平稳姿态。
+  // 苹果/方块自立扭矩: 体顶轴 (q·Ŷ) 偏离世界 Y 超过 ~20° 时, 绕纯滚转轴轻柔转回正立
+  // (死区防静置与地面打架)。三个不变量 (用户报告方块碰一下后持续抖动并上飘出画面,
+  // 三处各对应一个失效模式, 勿单独拆除):
+  // ① 只修滚转、不碰偏航 — 旧实现按四元数总角回正, 把偏航也算倾倒: 近轴对称体的偏航
+  //   是准自由方向 (噪声驱动慢漂移), 回正扭矩在这个无势阱方向上介入后与形状匹配反馈
+  //   失稳, 跑满一圈锁死在总角 ~π 处永久对抗 (即持续抖动)。
+  // ② q 与刚体同步旋转 — 方块 rest 的 180° 翻面是精确对称, 翻面姿态本身就是形状匹配
+  //   的最优解; 只转粒子不转 q 时回正旋转被形状匹配弹簧原样拽回, 姿态锁死、扭矩空转。
+  // ③ 上抬只补地面穿透量 — 恢复"旋转前最低点高度"会在悬空态每子步净抬升 (速度中性),
+  //   而形状匹配对绝对高度无记忆、重力被阻尼压住 → 质心棘轮式匀速上飘出画面。
+  //   贴地时最低点 ≈0, 只补穿透与旧行为等价 (立棱回正生效的第十五轮修复语义保留)。
   private upright(h: number) {
-    const q = this.q
-    // 符号归一 (q 与 -q 同旋转, 但 w<0 时轴向量反向, 会把校正转反方向)
-    let qw = q.w, qx = q.x, qy = q.y, qz = q.z
-    if (qw < 0) {
-      qw = -qw; qx = -qx; qy = -qy; qz = -qz
+    // 用户摆放优先，否则回正会在抓取期间持续把方块拉回原来的底面。
+    if (this.grabbed >= 0) return
+    // 体顶轴 v = q·Ŷ (rest 的 +Y 轴在世界的方向)
+    const v = _tmpV.set(0, 1, 0).applyQuaternion(this.q)
+    const tilt = Math.acos(Math.max(-1, Math.min(1, v.y)))
+    if (tilt < 0.35) return
+    // 回正轴 = Ŷ×v 归一 (纯滚转方向, 零偏航分量); 完全倒扣 (v ≈ -Ŷ) 时轴退化, 兜底世界 X
+    let ax = v.z, az = -v.x
+    const al = Math.hypot(ax, az)
+    if (al < 1e-6) {
+      ax = 1
+      az = 0
+    } else {
+      ax /= al
+      az /= al
     }
-    const w = 2 * Math.acos(Math.min(1, qw))
-    if (w < 0.35) return
-    const s = Math.sqrt(1 - qw * qw) || 1e-6
+    const corr = _tmpQ.setFromAxisAngle(_tmpV.set(ax, 0, az), -tilt * Math.min(1, 1.6 * h))
+    this.rotateAll(corr)
+    this.q.premultiply(corr).normalize()
     const p = this.pos
-    let minY = Infinity
-    for (let i = 0; i < this.count; i++) {
-      const y = p[i * 3 + 1]
-      if (y < minY) minY = y
-    }
-    this.rotateAll(_tmpQ.setFromAxisAngle(_tmpV.set(qx / s, qy / s, qz / s), -w * Math.min(1, 1.6 * h)))
     let minY2 = Infinity
     for (let i = 0; i < this.count; i++) {
       const y = p[i * 3 + 1]
       if (y < minY2) minY2 = y
     }
-    const lift = minY - minY2
+    const lift = Math.max(0, -minY2)
     if (lift > 0) {
       for (let i = 0; i < this.count; i++) {
         const k = i * 3

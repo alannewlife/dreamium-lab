@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
-document.title = 'Soft Matter — a WebGPU jelly'
+document.title = '软物质 · Soft Matter'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

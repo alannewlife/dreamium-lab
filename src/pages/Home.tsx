@@ -7,7 +7,7 @@ import Hud from '../three/hud/Hud'
 // 单屏固定页: 全屏 3D Stage + HUD 覆盖层, 无滚动。
 export default function Home() {
   return (
-    <main className="relative h-screen w-screen overflow-hidden bg-[#d1d2d1]">
+    <main className="relative h-dvh w-screen overflow-hidden bg-[#d1d2d1]">
       <Stage />
       <Hud />
     </main>

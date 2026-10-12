@@ -6,9 +6,9 @@ export type ShapeId = 'apple' | 'star' | 'cube'
 
 // 顺序: 星星置首 (用户要求, 与苹果对调)
 export const SHAPES: Array<{ id: ShapeId; label: string }> = [
-  { id: 'star', label: 'Star' },
-  { id: 'apple', label: 'Apple' },
-  { id: 'cube', label: 'Cube' },
+  { id: 'star', label: '星形' },
+  { id: 'apple', label: '苹果' },
+  { id: 'cube', label: '方块' },
 ]
 
 // 形状↔配色绑定 (用户简化: 苹果红 / 星星绿 / 方块黄, 一行胶囊同时切换)

@@ -1,11 +1,56 @@
 /* Webapp-specific styles (global theme lives in index.css). */
 
+/* 手机适配: 禁用 iOS Safari 自动放大字号的字体膨胀, 否则会破坏像素级 HUD 布局 */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 手机适配: 抽屉展开时淡出左下操作提示, 避免压在展开面板上;
+   利用卡头上 aria-expanded 状态纯 CSS 感知, 不需要 JS 桥接 (HUD 与面板互不 import) */
+@media (max-width: 767.98px) {
+  .hud-hints {
+    transition: opacity 0.25s ease-out;
+  }
+  .hud-hints:has(~ [data-testid='panel'] [aria-expanded='true']) {
+    opacity: 0;
+  }
+}
+
+/* 手机适配: 折叠抽屉的展开提示箭头轻微浮动, 吸引用户注意可上拉; 尊重系统减弱动态偏好 */
+@keyframes sheet-hint-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+.sheet-hint-arrow {
+  animation: sheet-hint-float 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-hint-arrow {
+    animation: none;
+  }
+}
+
+/* 手机适配: 触屏下消除按钮点按高亮和双击缩放延迟, 滑杆拖动不触发页面手势 */
+button,
+input[type='range'] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
 }
 
 .font-display {
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  /* 中文标题字体必须显式指定: 西文字体无 CJK 字形, 掉到浏览器通用 serif 会导致各浏览器渲染不一致 (用户报告) */
+  font-family: 'Playfair Display', Georgia, 'Songti SC', 'Noto Serif SC',
+    'Source Han Serif SC', 'Times New Roman', serif;
 }
 
 .font-tech {
