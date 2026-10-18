@@ -30,7 +30,7 @@ npm run preview
 
 使用新建并连接 GitHub 的 Cloudflare Pages 项目 `dreamium-lab`（旧 `jelly` 为直接上传，保留回退），生产分支 `main`，命令 `npm run build && npm test`，输出 `dist`。`/soft-matter/` 对应 `dist/soft-matter/index.html`，`/liquid-reality/` 对应 `dist/liquid-reality/index.html`，无需 Worker、反向代理或 SPA fallback。
 
-主域名绑定 `lab.dreamium.si`，原 `jelly.dreamium.si` 保留绑定，通过 `public/_redirects` 跳转软物质新地址并保留查询参数。GitHub 仓库更名为 `alannewlife/dreamium-lab`，保留全部提交历史；本地目录暂留 `jelly`，避免破坏现有开发路径。
+主域名绑定 `lab.dreamium.si`，原 `jelly.dreamium.si` 保留绑定，通过 Cloudflare Single Redirect 跳转软物质新地址并保留查询参数（规则存档于 `deployment/legacy-redirect.json`）。GitHub 仓库更名为 `alannewlife/dreamium-lab`，保留全部提交历史；本地目录暂留 `jelly`，避免破坏现有开发路径。
 
 水纹的触摸/鼠标模式不需要摄像头；摄像头模式需 HTTPS、用户授权及可用设备，手势模型由 jsDelivr 加载。相机和水纹在浏览器中处理。
 

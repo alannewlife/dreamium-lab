@@ -1,0 +1,16 @@
+{
+  "action": "redirect",
+  "action_parameters": {
+    "from_value": {
+      "preserve_query_string": true,
+      "status_code": 301,
+      "target_url": {
+        "value": "https://lab.dreamium.si/soft-matter/"
+      }
+    }
+  },
+  "description": "Legacy jelly root to Soft Matter",
+  "enabled": true,
+  "expression": "(http.host eq \"jelly.dreamium.si\" and http.request.uri.path in {\"/\" \"/index.html\"})",
+  "ref": "dreamium_lab_legacy_soft_matter"
+}

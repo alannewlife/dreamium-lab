@@ -11,7 +11,7 @@
 
 个人主页的两张实验卡片直接打开对应实验；集合页为可选入口。Pages 将发布目录映射成 URL，不使用额外服务器或反向代理。
 
-旧 `jelly` Pages 项目为直接上传模式，保留原部署用于回退；新建 Git 集成项目，让后续 main 推送自动发布。原 `jelly.dreamium.si` 绑定迁移到新项目后由 `_redirects` 将根入口跳转 `/soft-matter/`，保留查询参数，旧资源路径转到新站相同路径。
+旧 `jelly` Pages 项目为直接上传模式，保留原部署用于回退；新建 Git 集成项目，让后续 main 推送自动发布。原 `jelly.dreamium.si` 绑定迁移到新项目后，由 Cloudflare Single Redirect 将根入口跳转 `/soft-matter/`，保留查询参数。规则存档于 `deployment/legacy-redirect.json`；Pages 的 `_redirects` 不支持按来源域名匹配，因此不使用该文件。
 
 ## 回退
 
