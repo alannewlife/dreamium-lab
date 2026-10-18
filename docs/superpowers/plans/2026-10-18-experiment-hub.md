@@ -14,5 +14,5 @@
 - [x] 添加 hub 首页、soft-matter/index.html、public/liquid-reality/index.html；Vite 配置显式入口，资源相对路径。
 - [x] 清理未引用 UI、依赖和脚手架，保留原物理及单文件导出；更新文档、锁文件与站点静态规则。
 - [x] 修改个人主页 index.html、v2/refinements.css、src/projects.js，添加实验集合及两个直达入口。
-- [ ] 运行 npm run build、npm test、npm run build:single，检查桌面与手机以及实验页面。
+- [x] 运行 npm run build、npm test、npm run build:single，检查桌面与手机以及实验页面。
 - [ ] 创建回退标记、GitHub 改名、提交并推送；核对 Pages source 和构建设置，绑定 lab 域名并核验旧址跳转。

@@ -12,6 +12,8 @@ if (!existsSync(htmlPath)) {
 }
 
 let html = readFileSync(htmlPath, "utf8")
+// 独立文件从 file:// 打开时，返回入口也应指向线上实验站。
+html = html.replace("<head>", '<head><base href="https://lab.dreamium.si/">')
 
 // 内联 CSS：<link rel="stylesheet" ... href="./assets/*.css"> → <style>
 html = html.replace(
