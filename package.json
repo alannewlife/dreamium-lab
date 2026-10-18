@@ -8,8 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build:single": "vite build --config vite.config.single.ts && node scripts/make-single-html.mjs",
-    "test": "node --test scripts/softbody.test.mjs scripts/site.test.mjs"
+    "build:single": "vite build --config soft-matter/vite.config.single.ts && node soft-matter/scripts/make-single-html.mjs",
+    "test": "node --test soft-matter/tests/softbody.test.mjs scripts/site.test.mjs"
   },
   "dependencies": {
     "@fontsource/playfair-display": "^5.0.0",

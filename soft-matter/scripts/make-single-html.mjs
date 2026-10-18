@@ -1,13 +1,13 @@
-// 单 HTML 打包后处理：把 dist-single/index.html 里的 <script>/<link> 外链替换为内联内容，
+// 单 HTML 打包后处理：把 dist-single/soft-matter/index.html 里的 <script>/<link> 外链替换为内联内容，
 // 产出独立可双击打开的 soft-matter.html（file:// 协议可用），随后清掉中间产物。
-// 用法：node scripts/make-single-html.mjs [distDir]，默认 dist-single。
+// 用法：node soft-matter/scripts/make-single-html.mjs [distDir]，默认 dist-single。
 import { readFileSync, writeFileSync, rmSync, existsSync } from "node:fs"
 import { resolve, join } from "node:path"
 
 const dist = resolve(process.argv[2] ?? "dist-single")
 const htmlPath = join(dist, "soft-matter/index.html")
 if (!existsSync(htmlPath)) {
-  console.error(`[make-single-html] 找不到 ${htmlPath}，请先跑 vite build --config vite.config.single.ts`)
+  console.error(`[make-single-html] 找不到 ${htmlPath}，请先跑 vite build --config soft-matter/vite.config.single.ts`)
   process.exit(1)
 }
 

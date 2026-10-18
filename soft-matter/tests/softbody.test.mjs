@@ -2,7 +2,7 @@ import { build } from 'esbuild'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-const result = await build({ entryPoints: ['src/three/scene/softbody.ts'], bundle: true, platform: 'node', format: 'esm', write: false })
+const result = await build({ entryPoints: ['soft-matter/src/three/scene/softbody.ts'], bundle: true, platform: 'node', format: 'esm', write: false })
 const { SoftBody } = await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`)
 
 // 隔离环境微颤，测量求解器本身是否保留刚体旋转与回弹。

@@ -1,41 +1,70 @@
-# dreamium lab · 有趣实验
+# Dreamium Lab · 有趣实验站
 
 一点物理，一点错觉，一点不务正业。Alan 的交互实验收藏。
 
-| 页面 | 地址 | 源码 |
+**网站从 `index.html` 进入；开发从对应实验文件夹进入。** 每个实验是独立页面，只有进入时才加载自己的代码。
+
+| 内容 | 文件夹 | 线上入口 |
 | --- | --- | --- |
-| 实验入口 | https://lab.dreamium.si/ | `index.html`、`hub/` |
-| 软物质 | https://lab.dreamium.si/soft-matter/ | `soft-matter/index.html`、`src/` |
-| 现实被液化 | https://lab.dreamium.si/liquid-reality/ | `public/liquid-reality/index.html` |
+| 总入口 / 实验目录 | `index.html` + `hub/` | [lab.dreamium.si](https://lab.dreamium.si/) |
+| 软物质 · Soft Matter | [`soft-matter/`](soft-matter/README.md) | [/soft-matter/](https://lab.dreamium.si/soft-matter/) |
+| 现实被液化 · Liquid Reality | [`liquid-reality/`](liquid-reality/README.md) | [/liquid-reality/](https://lab.dreamium.si/liquid-reality/) |
 
-## 开发与验证
+## 文件夹怎么找
 
-需要 Node.js 22 或更新版本。
+```text
+index.html                 总入口：首页与实验卡片
+hub/                       总入口的样式、封面插画
+soft-matter/               实验 001：软物质
+  index.html               页面入口
+  src/                     React / Three.js 源码
+  tests/                   物理回归测试
+  docs/                    设计规格、历史验证
+  scripts/                 独立 HTML 导出工具
+  README.md                实验说明
+  AGENTS.md                引擎冻结区与开发约束
+liquid-reality/            实验 002：现实被液化
+  index.html               独立 HTML，包含样式和交互
+  README.md                实验说明
+public/                    全站共用的静态文件：图标、404、站点地图
+scripts/                   全站发布检查
+deployment/               部署说明、旧域名跳转规则
+docs/                      实验站的历史方案
+vite.config.ts             全站页面入口与构建配置
+package.json               全站开发、构建、测试命令
+dist/                      自动生成的发布目录，不在这里改源码
+```
+
+根目录里的 `tsconfig*`、`eslint.config.js`、`package-lock.json` 是共用工程配置，通常不用改。
+
+## 本地运行
+
+需要 Node.js 22 或更新版本，所有命令都从仓库根目录运行。
 
 ```sh
 npm ci
 npm run dev
-npm run build
-npm test
-npm run preview
 ```
 
-原软物质由 React + TypeScript + Three.js 构建。入口页是静态 HTML/CSS，水纹是独立 HTML；不共享 React 运行时或前端路由，不需要常驻后端。进入哪个实验才加载哪个实验的资源。
+- 总入口：`http://localhost:3000/`
+- 软物质：`http://localhost:3000/soft-matter/`
+- 现实被液化：`http://localhost:3000/liquid-reality/`
 
-`npm test` 在构建后执行，包含原有 11 项软体物理测试和发布目录、页面资源检查。软物质规格和历史验证保留在 `docs/soft-matter/`，引擎冻结规则见 `AGENTS.md`。
+```sh
+npm run build       # 构建到 dist/
+npm test            # 构建后执行：物理回归、发布页面及资源检查
+npm run preview     # 预览构建产物
+npm run build:single # 额外导出 dist-single/soft-matter.html
+```
 
-`npm run build:single` 仍导出独立软物质页面至 `dist-single/soft-matter.html`。
+## 再加一个实验
 
-## 发布
+1. 在根目录新建 `<slug>/`，与 `soft-matter/`、`liquid-reality/` 并列。英文短名就是网址路径，例如 `light-play/` → `/light-play/`。
+2. 在里面放 `index.html` 和 `README.md`。简单实验可以是单 HTML；需要 React / TypeScript 时，把自己的源码放在该目录的 `src/`。实验专属资源和测试也放在自己的目录里。
+3. 在 `vite.config.ts` 的 `build.rollupOptions.input` 增加这个 HTML 入口。如果使用 TypeScript，在 `tsconfig.app.json` 的 `include` 增加 `<slug>/src`；有测试则接入 `package.json` 的 `test` 命令。
+4. 在根 `index.html` 增加实验卡片，更新数量和下一件实验编号；封面放 `hub/`。在实验里加回首页 `/` 的链接。
+5. 更新本页实验表、`public/sitemap.xml` 和 `scripts/site.test.mjs` 中的页面清单，运行 `npm run build`，再运行 `npm test`。
 
-使用新建并连接 GitHub 的 Cloudflare Pages 项目 `dreamium-lab`（旧 `jelly` 为直接上传，保留回退），生产分支 `main`，命令 `npm run build && npm test`，输出 `dist`。`/soft-matter/` 对应 `dist/soft-matter/index.html`，`/liquid-reality/` 对应 `dist/liquid-reality/index.html`，无需 Worker、反向代理或 SPA fallback。
+沿用独立页面方式，样式与运行时互不干扰，无共享 SPA 路由。`public/` 只放全站静态文件，不放实验源码。
 
-主域名绑定 `lab.dreamium.si`，原 `jelly.dreamium.si` 保留绑定，通过 Cloudflare Single Redirect 跳转软物质新地址并保留查询参数（规则存档于 `deployment/legacy-redirect.json`）。GitHub 仓库更名为 `alannewlife/dreamium-lab`，保留全部提交历史；本地目录暂留 `jelly`，避免破坏现有开发路径。
-
-水纹的触摸/鼠标模式不需要摄像头；摄像头模式需 HTTPS、用户授权及可用设备，手势模型由 jsDelivr 加载。相机和水纹在浏览器中处理。
-
-## 新增实验
-
-独立 HTML 放到 `public/<slug>/index.html`，直接发布；需构建的页面放到 `<slug>/index.html`，在 `vite.config.ts` 的 `build.rollupOptions.input` 增加入口。给每个实验加回站点入口的链接，并在根首页增加卡片。优先隔离样式与运行时代码。
-
-封面为示意插画，不自动运行 WebGL 或请求摄像头。旧版回退标记为 `backup/pre-lab-2026-10-18`。
+部署方式与回退步骤见 [deployment/README.md](deployment/README.md)。Cloudflare Pages 按 `dist/` 目录直接提供页面，所有现有线上路径保持不变。

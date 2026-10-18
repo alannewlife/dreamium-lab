@@ -21,13 +21,13 @@
 ## 快速开始
 
 ```bash
-npm run dev        # 开发服务器 → http://localhost:3000
+npm run dev        # 从仓库根目录运行 → http://localhost:3000/soft-matter/
 npm run build      # tsc -b && vite build → dist/
 npm run preview    # 预览构建产物
 npm run lint       # eslint
 ```
 
-> 依赖已通过 `.nm-root/node_modules` 软链接就位，克隆后如缺失再 `npm install`。
+> 所有命令从仓库根目录运行；首次使用先执行 `npm ci`。本实验的源码、测试和历史文档均在 `soft-matter/` 内。
 
 ## URL 参数
 
@@ -43,26 +43,32 @@ npm run lint       # eslint
 ## 目录结构
 
 ```
-src/
-├── pages/Home.tsx            # 组装 <Stage/> + <Hud/>，单屏无滚动
-├── three/
-│   ├── Stage.tsx             # canvas + 渲染器生命周期 + rAF 循环（冻结，勿改）
-│   ├── engine/core/          # renderer/loop/signals/rng/forensic（冻结，勿改）
-│   ├── engine/kit/           # 按需取用：hudBridge 等
-│   ├── scene/
-│   │   ├── softbody.ts       # ★ 软体物理：粒子、积分、约束、抓取、形态几何
-│   │   ├── Scene.ts          # ★ 场景组装：灯光/地面/材质/指针交互/HUD 桥
-│   │   ├── materials.ts      # 果冻材质、三配色预设、Canvas 纹理
-│   │   └── bus.ts            # UI→scene 设置总线 + scene→UI 读数桥
-│   └── hud/
-│       ├── Hud.tsx           # 覆盖层：标题/徽章/提示/遥测/加载动画
-│       └── SpecimenPanel.tsx # "THE SPECIMEN" 控制卡
-├── components/ui/            # shadcn/ui 组件库（本页几乎未用，备用）
-└── index.css                 # Tailwind 主题 + 字体变量
-docs/
-├── plan.md                   # 布局规格（S 编号条目，像素级）
-└── report.md                 # 交付与验证报告（22 项：19 pass / 3 defer）
+soft-matter/
+├── index.html                 # 实验页面入口
+├── README.md                  # 本说明
+├── AGENTS.md                  # 冻结区与开发约束
+├── src/
+│   ├── main.tsx               # React 挂载入口
+│   ├── App.tsx
+│   ├── pages/Home.tsx         # 组装 Stage + Hud，单屏无滚动
+│   ├── index.css              # Tailwind 主题 + 字体变量
+│   └── three/
+│       ├── Stage.tsx          # 渲染器生命周期 + rAF（冻结）
+│       ├── engine/core/       # renderer/loop/signals/rng/forensic（冻结）
+│       ├── engine/kit/        # hudBridge 等工具
+│       ├── scene/             # 软体物理、场景、材质、通信总线
+│       └── hud/               # 覆盖层与控制卡
+├── tests/                     # 软体物理回归
+├── docs/
+│   ├── plan.md                # 布局规格（S 编号条目）
+│   ├── report.md              # 历史验证报告
+│   ├── physics-interaction-fix.md
+│   └── verify.jsonl           # 历史验证取证
+├── scripts/                   # 独立 HTML 导出后处理
+└── vite.config.single.ts      # 独立 HTML 构建配置
 ```
+
+历史记录中的 `src/` 均指本目录下的 `src/`；页面布局与物理实现未因目录整理改变。
 
 ## 数据流
 

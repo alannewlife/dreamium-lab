@@ -8,12 +8,13 @@ export default defineConfig({
   base: './',
   plugins: [tailwindcss(), react()],
   server: { port: 3000 },
-  resolve: { alias: { '@': path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'src') } },
+  resolve: { alias: { '@': path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'soft-matter/src') } },
   build: {
     rollupOptions: {
       input: {
         hub: fileURLToPath(new URL('./index.html', import.meta.url)),
         softMatter: fileURLToPath(new URL('./soft-matter/index.html', import.meta.url)),
+        liquidReality: fileURLToPath(new URL('./liquid-reality/index.html', import.meta.url)),
       },
     },
   },
