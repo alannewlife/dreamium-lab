@@ -10,6 +10,7 @@ export default function Home() {
     <main className="relative h-dvh w-screen overflow-hidden bg-[#d1d2d1]">
       <Stage />
       <Hud />
+      <a href="/" data-testid="back-to-lab" className="lab-back">↖ 有趣实验</a>
     </main>
   )
 }

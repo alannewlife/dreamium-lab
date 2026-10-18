@@ -1,18 +1,20 @@
-import path from "path"
-import react from "@vitejs/plugin-react"
-import tailwindcss from "@tailwindcss/vite"
-import { defineConfig } from "vite"
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from 'vite'
 
-// https://vite.dev/config/
 export default defineConfig({
   base: './',
   plugins: [tailwindcss(), react()],
-  server: {
-    port: 3000,
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+  server: { port: 3000 },
+  resolve: { alias: { '@': path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'src') } },
+  build: {
+    rollupOptions: {
+      input: {
+        hub: fileURLToPath(new URL('./index.html', import.meta.url)),
+        softMatter: fileURLToPath(new URL('./soft-matter/index.html', import.meta.url)),
+      },
     },
   },
-});
+})

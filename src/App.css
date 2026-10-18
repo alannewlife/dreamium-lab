@@ -83,3 +83,8 @@ body {
   border-radius: 50%;
   background: #2b2b2b;
 }
+
+/* 回入口链接避开模拟状态及手机面板，不占用画布中心的交互区域。 */
+.lab-back{position:fixed;top:58px;right:33px;z-index:30;color:#3a3b3e;font-size:11px;padding:6px 10px;background:#ffffffb3;border-radius:20px}
+.lab-back:focus-visible{outline:2px solid #533748;outline-offset:3px}
+@media(max-width:767.98px){.lab-back{top:8px;right:20px}}

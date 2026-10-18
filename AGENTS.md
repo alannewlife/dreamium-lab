@@ -1,3 +1,9 @@
+# Dreamium Lab — 有趣实验站
+
+入口 index.html 与 hub/ 为静态实验目录；soft-matter/index.html 是原软物质 React 入口，src/ 保留原软物质源码；public/liquid-reality/index.html 为独立水纹 HTML。构建输出 dist，由 Cloudflare Pages 直接按目录提供页面，无共享 SPA 路由。
+
+新增实验使用独立目录；运行 npm run build 后运行 npm test。历史规格与验证在 docs/soft-matter/。
+
 # AGENTS.md — AI 代理工作指南
 
 本文件给在本仓库工作的 AI 代理（代码审查、修改、验证）提供必读上下文。改动前请先读完，尤其是「冻结区」和「勿修复清单」。
@@ -41,7 +47,7 @@ UI 与场景互不 import，全部经 `src/three/scene/bus.ts`：
 - **物理热循环（softbody.ts 的 step/substep）禁止每帧分配**：向量/四元数用模块级 `_tmp` 复用；closure 内也复用。这是修过 GC 卡顿的硬规矩。
 - 临时 `THREE.CanvasTexture`/几何/材质必须在 `dispose()` 里释放（Scene.ts 有完整先例）。
 - HUD 控件全部带 `data-testid`（`shape-*`、`slider-firmness`、`btn-nudge`、`btn-reset`、`chk-*`、`btn-pause`、`stat-*`、`intro-overlay`、`panel`）——自动化验证依赖它们，新控件必须加。
-- UI 文案像素值、字距、颜色 token 均有规格（`docs/plan.md` S1–S13），改 HUD 样式先对照。
+- UI 文案像素值、字距、颜色 token 均有规格（`docs/soft-matter/plan.md` S1–S13），改 HUD 样式先对照。
 
 ## 勿"修复"清单（有意设计）
 
@@ -58,7 +64,7 @@ UI 与场景互不 import，全部经 `src/three/scene/bus.ts`：
 - URL 确定性钩子（`engine/core/forensic.ts`，勿改）：`?freeze`、`?lite`、`?autodemo`、`?t=<0..1>`；业务侧另有 `?shape=`、`?firmness=`、`?introhold`（Hud.tsx 读）。
 - `?autodemo` 时间线在 `Scene.ts#autodemo`（T=4.0s 起抓取/抛掷脚本），首次点击画布重新武装。
 - 验收基线：静置 KE 恒定 0.1 mJ 不爆发（抖动回归的判据）；连点 12 次零间隔各形态落位干净；Reset 后果柄朝上。
-- 历史规格与验证记录：`docs/plan.md`（S 编号布局规格）、`docs/report.md`（22 项验证 19 pass / 3 defer 及已知限制 D2/D5/D7）。
+- 历史规格与验证记录：`docs/soft-matter/plan.md`（S 编号布局规格）、`docs/soft-matter/report.md`（22 项验证 19 pass / 3 defer 及已知限制 D2/D5/D7）。
 
 ## 环境备注
 

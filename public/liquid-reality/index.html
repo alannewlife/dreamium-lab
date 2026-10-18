@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="description" content="用手指和手势让现实泛起水纹。dreamium 有趣实验。" />
+  <link rel="icon" href="/favicon.svg" />
+  <title>现实被液化 · Liquid Reality</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #05070a; touch-action: none; overscroll-behavior: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; background: #05070a; touch-action: none; }
+    #video { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; transform: scaleX(-1); }
+    .prompt-entry { position: fixed; top: max(16px, env(safe-area-inset-top)); left: max(16px, env(safe-area-inset-left)); z-index: 7; width: 48px; height: 48px; display: grid; place-items: center; color: rgba(255,255,255,.9); background: transparent; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; cursor: pointer; pointer-events: auto; text-decoration: none; padding: 0; }
+    .prompt-entry:active { transform: scale(.98); }
+    .prompt-entry svg { width: 25px; height: 25px; display: block; }
+    .prompt-overlay { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(0,0,0,.42); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); pointer-events: auto; }
+    .prompt-overlay.open { display: flex; }
+    .prompt-card { width: min(920px, 92vw); max-height: min(760px, 82vh); color: rgba(255,255,255,.92); background: rgba(9,13,20,.78); border: 1px solid rgba(255,255,255,.16); border-radius: 24px; box-shadow: 0 28px 90px rgba(0,0,0,.45); overflow: hidden; }
+    .prompt-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); }
+    .prompt-title { font-size: 15px; font-weight: 900; letter-spacing: .08em; }
+    .prompt-tools { display: flex; align-items: center; gap: 8px; }
+    .prompt-copy { height: 34px; padding: 0 13px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: rgba(255,255,255,.12); box-shadow: none; font-size: 12px; letter-spacing: .04em; }
+    .prompt-close { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border-radius: 999px; background: rgba(255,255,255,.12); box-shadow: none; }
+    .prompt-body { max-height: calc(min(760px, 82vh) - 67px); overflow: auto; padding: 18px 20px 22px; font-size: 13px; line-height: 1.72; white-space: pre-wrap; }
+    .watermark { position: fixed; top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 6; pointer-events: auto; color: rgba(255,255,255,.82); text-align: center; text-shadow: 0 2px 18px rgba(0,0,0,.75); backdrop-filter: blur(12px) saturate(1.15); -webkit-backdrop-filter: blur(12px) saturate(1.15); background: rgba(10,14,20,.22); border: 1px solid rgba(255,255,255,.12); border-radius: 16px; padding: 9px 12px; box-shadow: 0 18px 50px rgba(0,0,0,.22); cursor: pointer; text-decoration: none; }
+    .watermark-name { font-size: 15px; line-height: 1.1; font-weight: 900; letter-spacing: .08em; }
+    .watermark-url { margin-top: 3px; font-size: 11px; line-height: 1; font-weight: 700; letter-spacing: .12em; opacity: .72; }
+    .hud { position: fixed; left: max(16px, env(safe-area-inset-left)); right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); z-index: 5; display: flex; align-items: flex-end; justify-content: center; color: rgba(255,255,255,.9); pointer-events: auto; text-shadow: 0 1px 18px rgba(0,0,0,.85); transform: translateY(0); transition: left .28s ease, right .28s ease, bottom .28s ease, transform .34s cubic-bezier(.2,.9,.2,1); }
+    .hud.collapsed { left: 50%; right: auto; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%); }
+    .hud-toggle { position: absolute; top: 8px; right: 10px; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 0; background: transparent; border: 0; box-shadow: none; z-index: 4; pointer-events: auto; }
+    .panel { width: min(1080px, 100%); transform-origin: bottom center; backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2); background: rgba(10,14,20,.42); border: 1px solid rgba(255,255,255,.14); border-radius: 18px; padding: 12px 56px 12px 14px; box-shadow: 0 20px 60px rgba(0,0,0,.28); display: grid; grid-template-columns: 1fr auto; grid-template-areas: "title action" "status action"; column-gap: 18px; row-gap: 5px; align-items: center; transition: width .34s cubic-bezier(.2,.9,.2,1), min-height .34s cubic-bezier(.2,.9,.2,1), padding .34s cubic-bezier(.2,.9,.2,1), border-radius .34s cubic-bezier(.2,.9,.2,1), background .28s ease, transform .34s cubic-bezier(.2,.9,.2,1), opacity .2s ease; position: relative; }
+    .hud.collapsed .panel { width: 56px; height: 56px; min-height: 56px; border-radius: 0; padding: 0; display: block; background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .hud.collapsed .status, .hud.collapsed .actions, .hud.collapsed .title { opacity: 0; visibility: hidden; max-height: 0; overflow: hidden; pointer-events: none; }
+    .hud.collapsed .hud-toggle { top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); background: transparent; border: 0; box-shadow: none; }
+    .title { grid-area: title; font-size: 14px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 0; }
+    .status { grid-area: status; font-size: 13px; line-height: 1.9; opacity: .9; white-space: pre-line; max-height: 160px; transition: opacity .22s ease, max-height .34s cubic-bezier(.2,.9,.2,1), visibility .22s ease; }
+    .actions { grid-area: action; display: flex; flex-direction: column; align-items: stretch; gap: 10px; pointer-events: auto; max-height: 130px; transition: opacity .22s ease, max-height .34s cubic-bezier(.2,.9,.2,1), visibility .22s ease; }
+    .clarity-control { min-width: 190px; display: grid; gap: 7px; }
+    .clarity-label { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 800; letter-spacing: .04em; color: rgba(255,255,255,.82); }
+    #claritySlider { width: 100%; accent-color: rgba(155,220,255,.95); cursor: pointer; }
+    button { appearance: none; border: 0; color: white; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.22); border-radius: 999px; padding: 11px 16px; font-weight: 800; white-space: nowrap; box-shadow: 0 12px 35px rgba(0,0,0,.25); cursor: pointer; }
+    button:disabled { opacity: .65; cursor: default; }
+    button:active:not(:disabled) { transform: scale(.98); }
+    .hud-toggle-icon { display: block; width: 20px; height: 20px; font-size: 20px; line-height: 18px; text-align: center; transform: translateY(-1px) rotate(0deg); transform-origin: center; transition: transform .25s ease; }
+    .hud.collapsed .hud-toggle-icon { transform: translateY(-1px) rotate(45deg); }
+    .warn { color: #ffe0aa; }
+    @media (max-width: 720px) {
+      .hud { align-items: flex-end; }
+      .panel { padding: 11px 48px 11px 12px; grid-template-columns: 1fr; grid-template-areas: "title" "status" "action"; row-gap: 8px; }
+      .hud.collapsed .panel { width: 54px; height: 54px; min-height: 54px; padding: 0; background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+      .hud-toggle { top: 7px; right: 8px; width: 30px; height: 30px; }
+      .hud.collapsed .hud-toggle { top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); }
+      .title { font-size: 12px; }
+      .status { font-size: 12px; line-height: 1.85; }
+      button { padding: 10px 13px; }
+      .actions { flex-direction: column; align-items: stretch; gap: 10px; }
+      .clarity-control { min-width: 0; width: 100%; }
+      .watermark { top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); padding: 8px 10px; }
+      .watermark-name { font-size: 13px; }
+      .watermark-url { font-size: 10px; }
+      .prompt-entry { top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); width: 44px; height: 44px; }
+      .prompt-card { width: 94vw; max-height: 84vh; border-radius: 20px; }
+      .prompt-body { font-size: 12px; padding: 15px 16px 18px; }
+    }
+  </style>
+</head>
+<body>
+  <a href="/" style="position:fixed;top:76px;left:18px;z-index:8;color:#fff;text-decoration:none;font:12px monospace;padding:10px;background:#1119;border-radius:20px" aria-label="返回有趣实验">↖ 有趣实验</a>
+  <canvas id="gl"></canvas>
+  <video id="video" playsinline muted autoplay></video>
+  <button id="promptEntry" class="prompt-entry" aria-label="查看提示词" title="查看提示词">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5.5 4.5h7.2c1 0 1.8.8 1.8 1.8v13.2H7.3a2.8 2.8 0 0 1-2.8-2.8V5.5c0-.6.4-1 1-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M14.5 6.3c0-1 .8-1.8 1.8-1.8h2.2c.6 0 1 .4 1 1v11.2a2.8 2.8 0 0 1-2.8 2.8h-2.2V6.3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      <path d="M7.5 8.2h4.4M7.5 11.2h4.4M7.5 14.2h3.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </button>
+  <a class="watermark" href="https://rrzxs.com" target="_blank" rel="noopener noreferrer" aria-label="人人智学社 rrzxs.com">
+    <div class="watermark-name">人人智学社</div>
+    <div class="watermark-url">rrzxs.com</div>
+  </a>
+  <div id="promptOverlay" class="prompt-overlay" aria-hidden="true">
+    <div class="prompt-card" role="dialog" aria-modal="true" aria-labelledby="promptTitle">
+      <div class="prompt-head">
+        <div id="promptTitle" class="prompt-title">原始提示词</div>
+        <div class="prompt-tools">
+          <button id="promptCopy" class="prompt-copy" aria-label="复制全部提示词">复制</button>
+          <button id="promptClose" class="prompt-close" aria-label="关闭">×</button>
+        </div>
+      </div>
+      <div id="promptBody" class="prompt-body"></div>
+    </div>
+  </div>
+  <div id="hud" class="hud">
+    <div class="panel">
+      <button id="hudToggle" class="hud-toggle" aria-label="收起说明栏" title="收起说明栏"><span class="hud-toggle-icon">×</span></button>
+      <div class="title">Liquid Reality</div>
+      <div id="status" class="status">摄像头模式：默认进入摄像头画面，人物会被压暗成背景。把手指放在镜头前方隔空划过，会拉扯画面并产生细涟漪；握拳靠近或敲击镜头前方，会触发更大的圆形冲击波。
+无摄像头模式：如果摄像头权限被拒绝或不可用，会保留流动的抽象水色背景；触摸、拖动、点击也能测试液态水纹。</div>
+      <div class="actions">
+        <button id="cameraBtn">开启摄像头</button>
+        <div class="clarity-control">
+          <div class="clarity-label"><span>摄像头清晰度</span><span id="clarityValue">100%</span></div>
+          <input id="claritySlider" type="range" min="0" max="100" value="100" step="1" aria-label="摄像头内容显示清晰度" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script>
+  (() => {
+    'use strict';
+
+    const MAX_POINTS = 10;
+    const MAX_IMPACTS = 4;
+    const TIP_INDICES = [4, 8, 12, 16, 20];
+    const FINGER_TIPS = [8, 12, 16, 20];
+    const BASE_STATUS = `摄像头模式：默认进入摄像头画面，人物会被压暗成背景。把手指放在镜头前方隔空划过，会拉扯画面并产生细涟漪；握拳靠近或敲击镜头前方，会触发更大的圆形冲击波。
+无摄像头模式：如果摄像头权限被拒绝或不可用，会保留流动的抽象水色背景；触摸、拖动、点击也能测试液态水纹。`;
+    const CAMERA_LOADING_STATUS = `${BASE_STATUS}\n正在加载手势模型，加载完成后可识别手指和拳头敲击。`;
+    const CAMERA_REQUEST_STATUS = `正在请求摄像头权限……
+如果浏览器弹出权限提示，请选择允许。开启后，把手指放在镜头前方隔空划过即可产生水纹。`;
+    const ORIGINAL_PROMPT = `请帮我写一个单文件 HTML，实现“现实被液化”的实时手势交互效果。
+
+【效果描述】
+
+打开网页后调用前置摄像头作为背景。摄像头画面像被一层水包裹——平静时是普通画面，当我把手伸到摄像头前，手指划过的位置画面会像水面一样凸起、扭曲、产生涟漪并向外扩散。波纹有真实的物理感（折射、反射、高光、色散），波纹经过的地方画面被自然拉扯放大，平息后画面还原。
+
+【整体架构】
+
+- 单个 HTML 文件，不依赖任何构建工具
+- WebGL1（不用 WebGL2，最大兼容性）
+- MediaPipe Hands 做手指检测，10 个指尖都作为交互点
+- 物理模拟和最终渲染采用独立 fragment shader
+- 用 FBO ping-pong（3 个 FBO 循环）跑物理迭代
+- 物理模拟在半分辨率跑（性能优化），最终渲染在全分辨率
+
+【物理模拟 Shader 细节】
+
+跑二维波动方程，但要做以下精细化处理：
+
+1. 9-tap 各向同性模板（不是简单的 4-tap），权重：
+   - 4 个轴向邻居 0.2
+   - 4 个对角邻居 0.05
+   这样波纹扩散是真正的圆形，没有方形伪影。
+
+2. Verlet 积分：
+   - val = avg * 2.0 - prev
+
+3. 非线性衰减（关键）：
+   - 小振幅衰减快（模拟表面张力把细纹抹平）
+   - 大振幅衰减慢（模拟惯性）
+   - 实现：
+     - ampFactor = 1.0 - smoothstep(0.0, 0.08, abs(val)) * 0.006
+     - val *= uDamping * ampFactor
+
+4. 环境噪声：
+   - 加一层极低振幅的伪随机扰动，模拟微风/表面张力
+   - 必须非常轻微，只让水面“活着”
+
+5. 高频抑制：
+   - 每帧附加一次轻度 blur
+   - 防止出现数字振铃
+
+【交互要求】
+
+手指不是简单“画圆”：
+
+- 每个指尖必须带速度
+- 快速划过时产生明显尾迹
+- 慢速移动时只有轻微扰动
+- 注入能量方向与手指运动方向一致
+- 多指同时交互时波纹自然叠加
+
+【视觉渲染要求】
+
+最终渲染不要只是 UV 扭曲：
+
+1. 法线重建
+   - 从 height field 求 gradient
+   - normal = normalize(vec3(dx, dy, scale))
+
+2. 折射：
+   - 使用法线偏移摄像头 UV
+
+3. Fresnel：
+   - 边缘反射更亮
+
+4. 高光：
+   - 用 fake env light 做镜面高光
+
+5. 色散（chromatic dispersion）：
+   - R/G/B 用不同折射偏移
+
+6. caustics（焦散）：
+   - 波峰区域增加轻微亮度聚焦
+
+7. 微细节：
+   - 叠加超轻微 procedural noise
+   - 避免“塑料感”
+
+【性能要求】
+
+手机优先：
+
+- iPhone Safari 能跑
+- Android Chrome 能跑
+- 自动降分辨率
+- touch-action: none
+- 避免大量 CPU 回传
+- Hands 检测降频（例如 30fps）
+- WebGL 渲染保持 60fps
+
+【工程要求】
+
+代码必须：
+
+- 完整可运行
+- 不要伪代码
+- 所有 shader 写完整
+- 所有 framebuffer 初始化完整
+- 所有 uniform / attribute / texture setup 完整
+- 摄像头授权完整
+- MediaPipe 初始化完整
+- resize 处理完整
+- requestAnimationFrame 主循环完整
+
+【输出要求】
+
+直接输出完整 HTML：
+
+- <html>
+- <script>
+- 所有 shader
+- 所有 JS
+- 所有 CSS
+
+不要解释。不要省略。不要只给框架。给真正能运行的完整版。`;
+
+    const canvas = document.getElementById('gl');
+    const video = document.getElementById('video');
+    const statusEl = document.getElementById('status');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const hud = document.getElementById('hud');
+    const hudToggle = document.getElementById('hudToggle');
+    const claritySlider = document.getElementById('claritySlider');
+    const clarityValue = document.getElementById('clarityValue');
+    const promptEntry = document.getElementById('promptEntry');
+    const promptOverlay = document.getElementById('promptOverlay');
+    const promptClose = document.getElementById('promptClose');
+    const promptCopy = document.getElementById('promptCopy');
+    const promptBody = document.getElementById('promptBody');
+    promptBody.textContent = ORIGINAL_PROMPT;
+
+    function openPrompt() { promptOverlay.classList.add('open'); promptOverlay.setAttribute('aria-hidden', 'false'); }
+    function closePrompt() { promptOverlay.classList.remove('open'); promptOverlay.setAttribute('aria-hidden', 'true'); }
+    async function copyPrompt() {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(ORIGINAL_PROMPT);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = ORIGINAL_PROMPT;
+          textarea.setAttribute('readonly', '');
+          textarea.style.position = 'fixed';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          textarea.remove();
+        }
+        promptCopy.textContent = '已复制';
+        setTimeout(() => { promptCopy.textContent = '复制'; }, 1200);
+      } catch (err) {
+        promptCopy.textContent = '复制失败';
+        setTimeout(() => { promptCopy.textContent = '复制'; }, 1200);
+      }
+    }
+    hudToggle.addEventListener('click', () => {
+      const collapsed = hud.classList.toggle('collapsed');
+      hudToggle.setAttribute('aria-label', collapsed ? '展开说明栏' : '收起说明栏');
+      hudToggle.setAttribute('title', collapsed ? '展开说明栏' : '收起说明栏');
+    });
+    promptEntry.addEventListener('click', openPrompt);
+    promptClose.addEventListener('click', closePrompt);
+    promptCopy.addEventListener('click', copyPrompt);
+    promptOverlay.addEventListener('click', e => { if (e.target === promptOverlay) closePrompt(); });
+    window.addEventListener('keydown', e => { if (e.key === 'Escape') closePrompt(); });
+
+    const quad = new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]);
+    function setStatus(text, warn = false) { statusEl.textContent = text; statusEl.classList.toggle('warn', warn); }
+    function isSecureCameraContext() { return window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1'; }
+    function cameraErrorMessage(err) {
+      const name = err && err.name ? err.name : 'UnknownError';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return '这个浏览器不支持摄像头 API。当前保留无摄像头模式：触摸、拖动或点击画面即可测试液态水纹。';
+      if (!isSecureCameraContext()) return '摄像头需要 HTTPS 或 localhost 环境。当前保留无摄像头模式：触摸、拖动或点击画面即可测试液态水纹。';
+      if (name === 'NotAllowedError' || name === 'PermissionDeniedError') return '摄像头权限被拒绝。请在浏览器地址栏/设置里允许摄像头，或继续使用无摄像头模式。';
+      if (name === 'NotFoundError' || name === 'DevicesNotFoundError') return '没有找到可用摄像头。当前保留无摄像头模式：触摸、拖动或点击画面即可测试液态水纹。';
+      if (name === 'NotReadableError' || name === 'TrackStartError') return '摄像头正被其他应用占用，或系统暂时无法读取。当前保留无摄像头模式。';
+      return '摄像头启动失败（' + name + '）。当前保留无摄像头模式：触摸、拖动或点击画面即可测试液态水纹。';
+    }
+
+    const gl = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' });
+    if (!gl) { setStatus('当前浏览器不支持 WebGL。', true); return; }
+    const extHalf = gl.getExtension('OES_texture_half_float');
+    const extFloat = gl.getExtension('OES_texture_float');
+    const extHalfLinear = gl.getExtension('OES_texture_half_float_linear');
+    const extFloatLinear = gl.getExtension('OES_texture_float_linear');
+
+    const vs = `attribute vec2 aPos; varying vec2 vUv; void main(){ vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+    const simFs = `
+      precision highp float;
+      varying vec2 vUv;
+      uniform sampler2D uCurr; uniform sampler2D uPrev;
+      uniform vec2 uTexel; uniform vec2 uResolution;
+      uniform float uDamping; uniform float uTime;
+      uniform int uPointCount; uniform vec2 uPoints[10]; uniform vec2 uPrevPoints[10]; uniform vec2 uVels[10]; uniform float uStrengths[10];
+      uniform int uImpactCount; uniform vec3 uImpacts[4];
+      float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+      float segmentImpulse(vec2 uv, vec2 a, vec2 b, vec2 vel, float strength){
+        vec2 ab = b - a; float denom = max(dot(ab, ab), 1e-5); float t = clamp(dot(uv - a, ab) / denom, 0.0, 1.0); vec2 p = a + ab * t;
+        float d = length((uv - p) * uResolution); float speed = length(vel * uResolution); float radius = mix(9.0, 28.0, clamp(speed / 900.0, 0.0, 1.0));
+        float core = exp(-(d * d) / (radius * radius)); vec2 dir = normalize(vel + vec2(1e-5, 0.0));
+        vec2 n = normalize((uv - p) * vec2(uResolution.x / max(uResolution.y, 1.0), 1.0) + dir * 0.22);
+        float directional = dot(n, dir) * 0.5 + 0.5; float tail = smoothstep(0.0, 1.0, t);
+        return core * mix(0.45, 1.15, directional) * tail * strength;
+      }
+      float fistImpact(vec2 uv, vec2 center, float strength){
+        float d = length((uv - center) * uResolution); float disk = exp(-(d * d) / (34.0 * 34.0)); float ring1 = exp(-pow((d - 42.0) / 11.0, 2.0)); float ring2 = exp(-pow((d - 74.0) / 18.0, 2.0));
+        return (disk * 0.82 - ring1 * 0.42 + ring2 * 0.30) * strength;
+      }
+      void main(){
+        float c = texture2D(uCurr, vUv).r; float p = texture2D(uPrev, vUv).r;
+        float ax = texture2D(uCurr, vUv + vec2( uTexel.x, 0.0)).r; float bx = texture2D(uCurr, vUv + vec2(-uTexel.x, 0.0)).r;
+        float ay = texture2D(uCurr, vUv + vec2(0.0,  uTexel.y)).r; float by = texture2D(uCurr, vUv + vec2(0.0, -uTexel.y)).r;
+        float d1 = texture2D(uCurr, vUv + vec2( uTexel.x,  uTexel.y)).r; float d2 = texture2D(uCurr, vUv + vec2(-uTexel.x,  uTexel.y)).r;
+        float d3 = texture2D(uCurr, vUv + vec2( uTexel.x, -uTexel.y)).r; float d4 = texture2D(uCurr, vUv + vec2(-uTexel.x, -uTexel.y)).r;
+        float avg = (ax + bx + ay + by) * 0.2 + (d1 + d2 + d3 + d4) * 0.05; float val = avg * 2.0 - p;
+        float ampFactor = 1.0 - smoothstep(0.0, 0.08, abs(val)) * 0.006; val *= uDamping * ampFactor;
+        float hfBlur = c * 0.52 + avg * 0.48; val = mix(val, hfBlur, 0.055);
+        float noise = (hash(vUv * uResolution + uTime * 0.37) - 0.5) * 0.00034; noise += sin((vUv.x * 17.3 + vUv.y * 11.7 + uTime * 0.41)) * 0.00010; val += noise;
+        for(int i = 0; i < 10; i++){
+          if(i >= uPointCount) break; vec2 pt = uPoints[i]; vec2 ppt = uPrevPoints[i]; vec2 vel = uVels[i]; float speed = length(vel * uResolution); float s = (0.22 + smoothstep(10.0, 620.0, speed) * 1.25) * uStrengths[i];
+          val += segmentImpulse(vUv, ppt, pt, vel, s) * 0.145; float d = length((vUv - pt) * uResolution); float slowTouch = exp(-(d*d) / (26.0*26.0)) * (1.0 - smoothstep(0.0, 260.0, speed)); val += slowTouch * 0.014 * uStrengths[i];
+        }
+        for(int j = 0; j < 4; j++){ if(j >= uImpactCount) break; vec3 impact = uImpacts[j]; val += fistImpact(vUv, impact.xy, impact.z) * 0.16; }
+        val = clamp(val, -1.0, 1.0); gl_FragColor = vec4(val, val, val, 1.0);
+      }
+    `;
+    const renderFs = `
+      precision highp float;
+      varying vec2 vUv;
+      uniform sampler2D uVideo; uniform sampler2D uHeight;
+      uniform vec2 uTexel; uniform vec2 uCanvas; uniform vec2 uVideoSize;
+      uniform float uTime; uniform float uMirror; uniform float uHasCamera; uniform float uCameraClarity;
+      float hash(vec2 p){ p = fract(p * vec2(443.8975, 397.2973)); p += dot(p, p + 19.19); return fract(p.x * p.y); }
+      vec2 coverUv(vec2 uv){
+        vec2 canvasAspect = vec2(uCanvas.x / max(uCanvas.y, 1.0), 1.0); vec2 videoAspect = vec2(uVideoSize.x / max(uVideoSize.y, 1.0), 1.0); vec2 scale = vec2(1.0);
+        if(canvasAspect.x > videoAspect.x){ scale.y = videoAspect.x / canvasAspect.x; } else { scale.x = canvasAspect.x / videoAspect.x; }
+        vec2 outUv = (uv - 0.5) * scale + 0.5; outUv.x = mix(outUv.x, 1.0 - outUv.x, uMirror); return outUv;
+      }
+      vec3 proceduralBackdrop(vec2 uv){
+        vec2 p = uv - 0.5; float r = length(p); float a = atan(p.y, p.x); float waves = sin(a * 5.0 + uTime * 0.72) * 0.5 + 0.5; float rings = sin(r * 38.0 - uTime * 1.4) * 0.5 + 0.5;
+        vec3 deep = vec3(0.025, 0.045, 0.070); vec3 teal = vec3(0.05, 0.19, 0.24); vec3 pearl = vec3(0.58, 0.76, 0.82); vec3 col = mix(deep, teal, smoothstep(0.75, 0.05, r));
+        col += pearl * waves * rings * 0.10; col += vec3(0.12, 0.24, 0.33) * smoothstep(0.45, 0.0, abs(p.x + p.y * 0.35)); return col;
+      }
+      vec3 sampleScene(vec2 uv){
+        uv = clamp(uv, 0.002, 0.998); vec3 cam = texture2D(uVideo, coverUv(uv)).rgb; float luma = dot(cam, vec3(0.299, 0.587, 0.114));
+        float clarity = clamp(uCameraClarity, 0.0, 1.0); float hi = clamp((clarity - 0.5) * 2.0, 0.0, 1.0); float lo = clamp(clarity * 2.0, 0.0, 1.0); cam = mix(vec3(luma), cam, mix(0.34, 1.0, hi)); cam = (cam - 0.5) * mix(0.62, 1.08, hi) + 0.5; cam *= mix(vec3(0.55, 0.68, 0.78), vec3(1.0), hi); cam += mix(vec3(0.015, 0.035, 0.055), vec3(0.0), hi); vec3 bg = proceduralBackdrop(uv); float visibility = mix(0.0, 0.42, lo); visibility = mix(visibility, 1.0, hi); return mix(bg, cam, uHasCamera * visibility);
+      }
+      void main(){
+        float hL = texture2D(uHeight, vUv - vec2(uTexel.x, 0.0)).r; float hR = texture2D(uHeight, vUv + vec2(uTexel.x, 0.0)).r; float hD = texture2D(uHeight, vUv - vec2(0.0, uTexel.y)).r; float hU = texture2D(uHeight, vUv + vec2(0.0, uTexel.y)).r; float h = texture2D(uHeight, vUv).r;
+        vec2 grad = vec2(hR - hL, hU - hD); vec3 normal = normalize(vec3(-grad.x * 58.0, -grad.y * 58.0, 1.0)); vec2 refr = normal.xy * 0.086;
+        vec2 micro = vec2(hash(vUv * uCanvas * 0.45 + uTime * 0.17), hash(vUv * uCanvas * 0.47 - uTime * 0.13)) - 0.5; refr += micro * 0.0024 * (0.45 + abs(h) * 5.2);
+        vec3 col; col.r = sampleScene(vUv + refr * 1.020).r; col.g = sampleScene(vUv + refr * 0.965).g; col.b = sampleScene(vUv + refr * 0.900).b;
+        vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0)); vec3 lightDir = normalize(vec3(-0.45, 0.38, 0.80)); vec3 halfDir = normalize(lightDir + viewDir);
+        float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0); float spec = pow(max(dot(normal, halfDir), 0.0), 74.0); float spec2 = pow(max(dot(normal, normalize(vec3(0.55, -0.22, 0.80))), 0.0), 180.0) * 0.52;
+        float curvature = abs(hL + hR + hU + hD - 4.0 * h); float caustic = smoothstep(0.012, 0.085, curvature) * smoothstep(0.0, 0.22, h + 0.05); vec3 env = mix(vec3(0.06, 0.10, 0.15), vec3(0.78, 0.92, 1.0), normal.y * 0.5 + 0.5);
+        col = mix(col, env, fresnel * 0.58); col += vec3(0.75, 0.92, 1.0) * spec * 1.05; col += vec3(1.0, 0.92, 0.72) * spec2 * 0.52; col += vec3(0.40, 0.78, 1.0) * caustic * 0.24;
+        float ridge = smoothstep(0.012, 0.16, abs(h)) + smoothstep(0.025, 0.11, curvature); col += vec3(0.22, 0.52, 0.72) * ridge * 0.22; col *= 1.0 + ridge * 0.12;
+        float vignette = smoothstep(0.92, 0.18, length(vUv - 0.5)); col *= mix(0.86, 1.04, vignette); col += (hash(vUv * uCanvas + uTime) - 0.5) * 0.006; gl_FragColor = vec4(pow(max(col, 0.0), vec3(0.96)), 1.0);
+      }
+    `;
+
+    function compile(type, src) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, src);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const info = gl.getShaderInfoLog(shader) || 'Shader compile failed';
+        gl.deleteShader(shader);
+        throw new Error(info);
+      }
+      return shader;
+    }
+    function createProgram(vertex, frag) {
+      const p = gl.createProgram();
+      const v = compile(gl.VERTEX_SHADER, vertex);
+      const f = compile(gl.FRAGMENT_SHADER, frag);
+      gl.attachShader(p, v); gl.attachShader(p, f); gl.bindAttribLocation(p, 0, 'aPos'); gl.linkProgram(p); gl.deleteShader(v); gl.deleteShader(f);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { const info = gl.getProgramInfoLog(p) || 'Program link failed'; gl.deleteProgram(p); throw new Error(info); }
+      return p;
+    }
+
+    let simProgram; let renderProgram;
+    try { simProgram = createProgram(vs, simFs); renderProgram = createProgram(vs, renderFs); } catch (err) { setStatus('Shader 初始化失败：' + err.message, true); return; }
+
+    const quadBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer); gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    function bindQuad() { gl.bindBuffer(gl.ARRAY_BUFFER, quadBuffer); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0); }
+
+    const simLoc = { curr: gl.getUniformLocation(simProgram, 'uCurr'), prev: gl.getUniformLocation(simProgram, 'uPrev'), texel: gl.getUniformLocation(simProgram, 'uTexel'), res: gl.getUniformLocation(simProgram, 'uResolution'), damping: gl.getUniformLocation(simProgram, 'uDamping'), time: gl.getUniformLocation(simProgram, 'uTime'), count: gl.getUniformLocation(simProgram, 'uPointCount'), points: gl.getUniformLocation(simProgram, 'uPoints[0]'), prevPoints: gl.getUniformLocation(simProgram, 'uPrevPoints[0]'), vels: gl.getUniformLocation(simProgram, 'uVels[0]'), strengths: gl.getUniformLocation(simProgram, 'uStrengths[0]'), impactCount: gl.getUniformLocation(simProgram, 'uImpactCount'), impacts: gl.getUniformLocation(simProgram, 'uImpacts[0]') };
+    const renderLoc = { video: gl.getUniformLocation(renderProgram, 'uVideo'), height: gl.getUniformLocation(renderProgram, 'uHeight'), texel: gl.getUniformLocation(renderProgram, 'uTexel'), canvas: gl.getUniformLocation(renderProgram, 'uCanvas'), videoSize: gl.getUniformLocation(renderProgram, 'uVideoSize'), time: gl.getUniformLocation(renderProgram, 'uTime'), mirror: gl.getUniformLocation(renderProgram, 'uMirror'), hasCamera: gl.getUniformLocation(renderProgram, 'uHasCamera'), cameraClarity: gl.getUniformLocation(renderProgram, 'uCameraClarity') };
+
+    let width = 1; let height = 1; let simW = 1; let simH = 1; let fbos = []; let stepIndex = 0; let fboType = gl.UNSIGNED_BYTE; let fboLinear = true;
+    function isMobile() { return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent); }
+    function makeTex(w, h, type, filter, data) { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, type, data || null); return t; }
+    function canRenderTo(type, linear) { const tex = makeTex(4, 4, type, linear ? gl.LINEAR : gl.NEAREST); const fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0); const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE; gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fbo); gl.deleteTexture(tex); return ok; }
+    function chooseFboFormat() { const candidates = []; if (extHalf) candidates.push({ type: extHalf.HALF_FLOAT_OES, linear: !!extHalfLinear }); if (extFloat) candidates.push({ type: gl.FLOAT, linear: !!extFloatLinear }); candidates.push({ type: gl.UNSIGNED_BYTE, linear: true }); for (const c of candidates) { if (canRenderTo(c.type, c.linear)) return c; if (c.linear && canRenderTo(c.type, false)) return { type: c.type, linear: false }; } return { type: gl.UNSIGNED_BYTE, linear: false }; }
+    const chosenFormat = chooseFboFormat(); fboType = chosenFormat.type; fboLinear = chosenFormat.linear;
+    function makeFbo(w, h) { const tex = makeTex(w, h, fboType, fboLinear ? gl.LINEAR : gl.NEAREST); const fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0); if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) { gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fbo); gl.deleteTexture(tex); throw new Error('Framebuffer incomplete'); } gl.bindFramebuffer(gl.FRAMEBUFFER, null); return { tex, fbo }; }
+
+    const videoTex = gl.createTexture(); let videoTexW = 2; let videoTexH = 2;
+    gl.bindTexture(gl.TEXTURE_2D, videoTex); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([8,10,14,255,18,22,30,255,16,20,28,255,6,8,12,255]));
+    function clearFbo(f) { gl.bindFramebuffer(gl.FRAMEBUFFER, f.fbo); gl.viewport(0, 0, simW, simH); gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); }
+    function resize() { const dpr = Math.min(window.devicePixelRatio || 1, isMobile() ? 1.65 : 2.0); width = Math.max(2, Math.floor(innerWidth * dpr)); height = Math.max(2, Math.floor(innerHeight * dpr)); canvas.width = width; canvas.height = height; canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px'; const minSide = Math.min(width, height); const factor = minSide > 1200 ? 3 : 2; simW = Math.max(64, Math.floor(width / factor)); simH = Math.max(64, Math.floor(height / factor)); fbos.forEach(o => { gl.deleteTexture(o.tex); gl.deleteFramebuffer(o.fbo); }); fbos = [makeFbo(simW, simH), makeFbo(simW, simH), makeFbo(simW, simH)]; fbos.forEach(clearFbo); stepIndex = 0; }
+    window.addEventListener('resize', resize, { passive: true }); window.addEventListener('orientationchange', () => setTimeout(resize, 160), { passive: true });
+    try { resize(); } catch (err) { setStatus('渲染缓冲初始化失败：' + err.message, true); return; }
+
+    const points = new Float32Array(MAX_POINTS * 2); const prevPoints = new Float32Array(MAX_POINTS * 2); const vels = new Float32Array(MAX_POINTS * 2); const strengths = new Float32Array(MAX_POINTS); const impacts = new Float32Array(MAX_IMPACTS * 3); const pointerMap = new Map(); const impactPool = [];
+    let impactCount = 0; let pointCount = 0; let handTargets = []; let lastHandTime = 0; let previousFists = []; let hands = null; let mediaReady = false; let demoMode = true; let starting = false; let detectBusy = false; let lastDetect = 0; let cameraClarity = 1;
+    function updateClarityLabel() { const v = Math.round(cameraClarity * 100); clarityValue.textContent = v === 0 ? '隐藏' : v + '%'; }
+    claritySlider.addEventListener('input', () => { cameraClarity = Math.max(0, Math.min(1, Number(claritySlider.value) / 100)); updateClarityLabel(); });
+    updateClarityLabel();
+    function runSelfTests() { console.groupCollapsed('Liquid Reality self tests'); console.assert(typeof cameraErrorMessage({ name: 'NotAllowedError' }) === 'string', 'cameraErrorMessage returns string'); console.assert(cameraErrorMessage({ name: 'NotAllowedError' }).includes('权限'), 'NotAllowedError is explained'); console.assert(cameraErrorMessage({ name: 'NotFoundError' }).includes('没有找到'), 'NotFoundError is explained'); console.assert(MAX_POINTS === 10, 'uses 10 fingertip interaction slots'); console.assert(MAX_IMPACTS === 4, 'supports fist impact shockwave slots'); console.assert(quad.length === 12, 'fullscreen quad has 6 vertices'); console.assert(typeof isSecureCameraContext() === 'boolean', 'secure camera context check returns boolean'); console.groupEnd(); }
+    function addImpact(x, y, strength) { if (!Number.isFinite(x) || !Number.isFinite(y)) return; impactPool.push({ x: Math.max(0.02, Math.min(0.98, x)), y: Math.max(0.02, Math.min(0.98, y)), strength: Math.max(0.25, Math.min(1.65, strength || 1.0)), ttl: 70 }); if (impactPool.length > 12) impactPool.splice(0, impactPool.length - 12); }
+    function setManualPoints() { const arr = Array.from(pointerMap.values()).slice(0, MAX_POINTS); handTargets = arr.map(p => ({ x: p.x, y: p.y, px: p.px, py: p.py, strength: 0.85 })); lastHandTime = performance.now(); }
+
+    canvas.addEventListener('pointerdown', e => { if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId); const x = e.clientX / Math.max(innerWidth, 1); const y = 1.0 - e.clientY / Math.max(innerHeight, 1); pointerMap.set(e.pointerId, { x, y, px: x, py: y }); const pressure = Number.isFinite(e.pressure) ? e.pressure : 0.5; if (pressure > 0.55 || e.pointerType === 'mouse') addImpact(x, y, e.pointerType === 'mouse' ? 0.95 : pressure * 1.4); setManualPoints(); e.preventDefault(); }, { passive: false });
+    canvas.addEventListener('pointermove', e => { const x = e.clientX / Math.max(innerWidth, 1); const y = 1.0 - e.clientY / Math.max(innerHeight, 1); const p = pointerMap.get(e.pointerId); if (p) { p.px = p.x; p.py = p.y; p.x = x; p.y = y; } else if (e.buttons) { pointerMap.set(e.pointerId, { x, y, px: x, py: y }); } setManualPoints(); e.preventDefault(); }, { passive: false });
+    function pointerEnd(e) { const p = pointerMap.get(e.pointerId); if (p) { const speed = Math.hypot((p.x - p.px) * width, (p.y - p.py) * height); if (speed > 18 || (Number.isFinite(e.pressure) && e.pressure > 0.45)) addImpact(p.x, p.y, Math.min(1.2, 0.7 + speed / 160.0)); } pointerMap.delete(e.pointerId); setManualPoints(); }
+    canvas.addEventListener('pointerup', pointerEnd, { passive: true }); canvas.addEventListener('pointercancel', pointerEnd, { passive: true });
+
+    function stopCamera() { if (video.srcObject) { video.srcObject.getTracks().forEach(track => track.stop()); video.srcObject = null; } mediaReady = false; demoMode = true; previousFists = []; if (!starting) cameraBtn.textContent = '开启摄像头'; }
+    function enterDemoMode(message, warn = false) { stopCamera(); cameraBtn.disabled = false; cameraBtn.textContent = '开启摄像头'; setStatus(message || BASE_STATUS, warn); }
+    async function initHandsIfNeeded() { if (hands) return hands; if (!window.Hands) throw new Error('MediaPipe Hands 未加载，请检查网络或 CDN。'); hands = new Hands({ locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` }); hands.setOptions({ maxNumHands: 2, modelComplexity: isMobile() ? 0 : 1, minDetectionConfidence: 0.62, minTrackingConfidence: 0.56 }); hands.onResults(onHands); return hands; }
+    async function startCamera() {
+      if (starting) return; starting = true; cameraBtn.disabled = true; cameraBtn.textContent = '正在开启…'; setStatus(CAMERA_REQUEST_STATUS);
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw Object.assign(new Error('getUserMedia unavailable'), { name: 'NotSupportedError' });
+        if (!isSecureCameraContext()) throw Object.assign(new Error('Camera requires secure context'), { name: 'InsecureContextError' });
+        stopCamera();
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } }, audio: false });
+        video.srcObject = stream; video.setAttribute('playsinline', ''); video.muted = true; await video.play(); mediaReady = true; demoMode = false; cameraBtn.textContent = '关闭摄像头'; setStatus(CAMERA_LOADING_STATUS);
+        initHandsIfNeeded().then(() => { if (!demoMode && mediaReady) { lastDetect = 0; setStatus(BASE_STATUS); } }).catch(err => { console.warn('MediaPipe Hands load failed:', err); if (!demoMode && mediaReady) setStatus(`${BASE_STATUS}\n摄像头已开启，但手势模型加载失败。你仍然可以直接触摸、拖动或点击画面测试水纹；刷新或检查网络后可重试手势识别。`, true); });
+      } catch (err) {
+        console.warn('Camera start failed:', err); enterDemoMode(cameraErrorMessage(err), true);
+      } finally {
+        starting = false; cameraBtn.disabled = false; cameraBtn.textContent = mediaReady ? '关闭摄像头' : '开启摄像头';
+      }
+    }
+    function toggleCamera() { if (starting) return; if (mediaReady) enterDemoMode(BASE_STATUS); else startCamera(); }
+    cameraBtn.addEventListener('click', toggleCamera); canvas.addEventListener('dblclick', toggleCamera);
+
+    function onHands(results) {
+      const now = performance.now(); const next = []; const nextFists = [];
+      if (results.multiHandLandmarks) {
+        results.multiHandLandmarks.forEach((lm, handIndex) => {
+          for (const idx of TIP_INDICES) { const p = lm[idx]; next.push({ x: 1.0 - p.x, y: 1.0 - p.y, z: p.z || 0 }); }
+          const wrist = lm[0]; const palm = lm[9]; const center = { x: 1.0 - (wrist.x + lm[5].x + lm[9].x + lm[13].x + lm[17].x) / 5.0, y: 1.0 - (wrist.y + lm[5].y + lm[9].y + lm[13].y + lm[17].y) / 5.0 };
+          const palmSize = Math.max(0.001, Math.hypot(palm.x - wrist.x, palm.y - wrist.y)); let folded = 0;
+          for (const tipIdx of FINGER_TIPS) { const tip = lm[tipIdx]; const mcp = lm[tipIdx - 3]; const tipDist = Math.hypot(tip.x - wrist.x, tip.y - wrist.y); const mcpDist = Math.hypot(mcp.x - wrist.x, mcp.y - wrist.y); if (tipDist < mcpDist * 1.34) folded++; }
+          const fist = folded >= 3; const prev = previousFists[handIndex]; const speed = prev ? Math.hypot((center.x - prev.x) * width, (center.y - prev.y) * height) : 0; const grow = prev ? (palmSize - prev.size) / Math.max(prev.size, 0.001) : 0;
+          if (fist && (!prev || !prev.fist || speed > 18 || grow > 0.10)) { addImpact(center.x, center.y, Math.min(1.65, 0.92 + speed / 120.0 + Math.max(0, grow) * 2.2)); }
+          nextFists[handIndex] = { x: center.x, y: center.y, size: palmSize, fist };
+        });
+      }
+      const old = handTargets; const merged = [];
+      for (let i = 0; i < Math.min(MAX_POINTS, next.length); i++) {
+        const n = next[i]; let best = -1; let bd = 1e9;
+        for (let j = 0; j < old.length; j++) { const dx = old[j].x - n.x; const dy = old[j].y - n.y; const d = dx * dx + dy * dy; if (d < bd) { bd = d; best = j; } }
+        if (best >= 0 && bd < 0.035) merged.push({ x: n.x, y: n.y, px: old[best].x, py: old[best].y, strength: 1.0 }); else merged.push({ x: n.x, y: n.y, px: n.x, py: n.y, strength: 0.55 });
+      }
+      handTargets = merged; previousFists = nextFists; lastHandTime = now;
+    }
+    async function maybeDetect(now) { if (demoMode || !hands || !mediaReady || detectBusy) return; if (now - lastDetect < 24 || video.readyState < 2 || !video.videoWidth || !video.videoHeight) return; lastDetect = now; detectBusy = true; try { await hands.send({ image: video }); } catch (err) { console.warn('Hands detect failed:', err); } finally { detectBusy = false; } }
+    function uploadVideoTexture() { if (!mediaReady || video.readyState < 2) return; gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, videoTex); try { gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); if (video.videoWidth && video.videoHeight && (video.videoWidth !== videoTexW || video.videoHeight !== videoTexH)) { videoTexW = video.videoWidth; videoTexH = video.videoHeight; gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video); } else { gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video); } gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); } catch (err) { gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); } }
+    function updateUniformArrays(now, dt) { if (pointerMap.size === 0 && now - lastHandTime > 260) handTargets = []; let write = 0; for (let i = 0; i < impactPool.length; i++) { const impact = impactPool[i]; impact.ttl -= dt; if (impact.ttl > 0) impactPool[write++] = impact; } impactPool.length = write; impactCount = Math.min(MAX_IMPACTS, impactPool.length); for (let j = 0; j < MAX_IMPACTS; j++) { const k = j * 3; const impact = impactPool[j]; if (j < impactCount && impact) { impacts[k] = impact.x; impacts[k + 1] = impact.y; impacts[k + 2] = impact.strength * Math.min(1, impact.ttl / 18); } else { impacts[k] = 0; impacts[k + 1] = 0; impacts[k + 2] = 0; } } pointCount = Math.min(MAX_POINTS, handTargets.length); for (let i = 0; i < MAX_POINTS; i++) { const k = i * 2; const t = handTargets[i]; if (i < pointCount && t) { points[k] = t.x; points[k + 1] = t.y; prevPoints[k] = Number.isFinite(t.px) ? t.px : t.x; prevPoints[k + 1] = Number.isFinite(t.py) ? t.py : t.y; vels[k] = t.x - prevPoints[k]; vels[k + 1] = t.y - prevPoints[k + 1]; strengths[i] = t.strength || 1.0; } else { points[k] = 0; points[k + 1] = 0; prevPoints[k] = 0; prevPoints[k + 1] = 0; vels[k] = 0; vels[k + 1] = 0; strengths[i] = 0; } } }
+    function simStep(time) { const prev = fbos[stepIndex % 3]; const curr = fbos[(stepIndex + 1) % 3]; const next = fbos[(stepIndex + 2) % 3]; gl.useProgram(simProgram); bindQuad(); gl.bindFramebuffer(gl.FRAMEBUFFER, next.fbo); gl.viewport(0, 0, simW, simH); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, curr.tex); gl.uniform1i(simLoc.curr, 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, prev.tex); gl.uniform1i(simLoc.prev, 1); gl.uniform2f(simLoc.texel, 1 / simW, 1 / simH); gl.uniform2f(simLoc.res, simW, simH); gl.uniform1f(simLoc.damping, fboType === gl.UNSIGNED_BYTE ? 0.968 : 0.985); gl.uniform1f(simLoc.time, time * 0.001); gl.uniform1i(simLoc.count, pointCount); gl.uniform2fv(simLoc.points, points); gl.uniform2fv(simLoc.prevPoints, prevPoints); gl.uniform2fv(simLoc.vels, vels); gl.uniform1fv(simLoc.strengths, strengths); gl.uniform1i(simLoc.impactCount, impactCount); gl.uniform3fv(simLoc.impacts, impacts); gl.drawArrays(gl.TRIANGLES, 0, 6); stepIndex = (stepIndex + 1) % 3; }
+    function render(time) { const heightFbo = fbos[(stepIndex + 1) % 3]; gl.useProgram(renderProgram); bindQuad(); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, width, height); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, videoTex); gl.uniform1i(renderLoc.video, 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, heightFbo.tex); gl.uniform1i(renderLoc.height, 1); gl.uniform2f(renderLoc.texel, 1 / simW, 1 / simH); gl.uniform2f(renderLoc.canvas, width, height); gl.uniform2f(renderLoc.videoSize, video.videoWidth || 1280, video.videoHeight || 720); gl.uniform1f(renderLoc.time, time * 0.001); gl.uniform1f(renderLoc.mirror, mediaReady ? 1.0 : 0.0); gl.uniform1f(renderLoc.hasCamera, mediaReady ? 1.0 : 0.0); gl.uniform1f(renderLoc.cameraClarity, cameraClarity); gl.drawArrays(gl.TRIANGLES, 0, 6); }
+    let lastFrame = performance.now();
+    function loop(now) { const dt = Math.min(50, Math.max(8, now - lastFrame)); lastFrame = now; maybeDetect(now); uploadVideoTexture(); updateUniformArrays(now, dt); const steps = isMobile() ? 1 : 2; for (let i = 0; i < steps; i++) simStep(now + i * 8); render(now); requestAnimationFrame(loop); }
+    gl.disable(gl.DEPTH_TEST); gl.disable(gl.STENCIL_TEST); gl.disable(gl.BLEND); runSelfTests(); setStatus(CAMERA_REQUEST_STATUS); startCamera(); requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>

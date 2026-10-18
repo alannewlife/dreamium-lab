@@ -31,3 +31,9 @@ dist-single
 # 本地测试产物（截图 / 演示文稿），不进仓库
 output
 *.pptx
+
+# 本地构建和浏览器验证缓存
+.wrangler
+.playwright-cli
+
+.cache

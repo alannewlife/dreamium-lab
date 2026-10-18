@@ -8,6 +8,7 @@ import { defineConfig } from "vite"
 // 项目无动态 import，构建天然单 chunk；JS/CSS 的内联由 scripts/make-single-html.mjs 后处理完成。
 export default defineConfig({
   base: "./",
+  publicDir: false,
   plugins: [tailwindcss(), react()],
   server: {
     port: 3000,
@@ -19,6 +20,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist-single",
+    rollupOptions: { input: path.resolve(__dirname, "soft-matter/index.html") },
     emptyOutDir: true,
     // 任何资源（woff2 字体等）一律内联为 data URI，不产出独立资源文件
     assetsInlineLimit: 100000000,
